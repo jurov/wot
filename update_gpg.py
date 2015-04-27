@@ -6,6 +6,7 @@
 
 import sys, subprocess
 import csv, StringIO
+import re
 from urllib2 import urlopen
 
 res = subprocess.check_output(['gpg'] + sys.argv[1:] + ['-k','--fingerprint','--with-colons','--fixed-list-mode'])
@@ -24,9 +25,16 @@ for row in csvReader:
 
 
 res = urlopen('http://files.bitcoin-assets.com/wot/trustlist.txt')
+# download ought to be checked by /msg assbot !shasum wot
+# but we just check if data looks like fingerprints to avoid parameter injections
+check = re.compile('^[0-9A-F]{40}$')
+
 csvReader = csv.reader(res, delimiter=' ', quoting=csv.QUOTE_NONE)
 for row in csvReader:
-    assbotkeys.add(row[0])
+    if check.match(row[0]):
+        assbotkeys.add(row[0])
+    else:
+        raise ValueError("Bad fingerprint: %s" % row[0])
 
 for keyid in (assbotkeys - gpgkeys):
     print("Adding %s" % keyid)
